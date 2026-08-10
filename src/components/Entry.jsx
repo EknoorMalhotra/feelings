@@ -185,7 +185,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
 
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: entryBackground, animation: 'fadeUp 0.4s ease' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '26px 48px', borderBottom: entryHeaderBorder, boxSizing: 'border-box', fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 'clamp(16px, 5vw, 26px) clamp(16px, 5vw, 48px)', borderBottom: entryHeaderBorder, boxSizing: 'border-box', fontFamily: "'Inter', sans-serif" }}>
         <button type="button" onClick={handleGoHome} style={{ background: 'none', border: 'none', fontSize: 20, color: entryChromeColor, cursor: 'pointer' }}>
           ←
         </button>
@@ -195,7 +195,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
             onClick={() => setEntryMode('writing')}
             style={{
               fontFamily: "'Inter', sans-serif",
-              padding: '9px 22px',
+              padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
               borderRadius: 999,
               border: 'none',
               fontSize: 13,
@@ -212,7 +212,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
             onClick={() => setEntryMode('speaking')}
             style={{
               fontFamily: "'Inter', sans-serif",
-              padding: '9px 22px',
+              padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
               borderRadius: 999,
               border: 'none',
               fontSize: 13,
@@ -248,18 +248,18 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
       </div>
 
       {isWriting && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: '48px 64px', boxSizing: 'border-box', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(16px, 6vw, 48px) clamp(16px, 6vw, 64px)', boxSizing: 'border-box', display: 'flex', justifyContent: 'center' }}>
           <div
             style={{
               width: '70%',
-              minWidth: 520,
+              minWidth: 'min(520px, 100%)',
               maxWidth: 900,
               margin: '0 auto',
               backgroundColor: '#F7F1E4',
               backgroundImage: PAPER_NOISE,
               backgroundSize: '200px 200px',
               borderRadius: 6,
-              padding: '56px 64px',
+              padding: 'clamp(24px, 6vw, 56px) clamp(20px, 6vw, 64px)',
               boxShadow: '0 10px 40px rgba(59,70,81,0.14), inset 0 0 0 1px rgba(59,70,81,0.04)',
               minHeight: 600,
               display: 'flex',
@@ -280,7 +280,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
                 background: 'transparent',
                 fontFamily: "'Lora', serif",
                 fontWeight: 700,
-                fontSize: 38,
+                fontSize: 'clamp(26px, 7vw, 38px)',
                 color: '#2C2620',
                 marginBottom: 22,
                 width: '100%',
@@ -293,7 +293,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
       )}
 
       {!isWriting && (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 38, padding: 48, boxSizing: 'border-box' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 38, padding: 'clamp(20px, 6vw, 48px)', boxSizing: 'border-box' }}>
           <div style={{ position: 'relative', width: 240, height: 240, borderRadius: '50%', overflow: 'hidden', boxShadow: '0 20px 60px rgba(59,70,81,0.18), inset 0 0 44px rgba(255,255,255,0.25)' }}>
             <div
               ref={orbInnerRef}

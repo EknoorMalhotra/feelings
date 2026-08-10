@@ -17,14 +17,15 @@ export default function ConnectGate({ status, error, onConnect }) {
         style={{
           background: '#FBF5EA',
           borderRadius: 26,
-          padding: '48px 56px',
+          padding: 'clamp(28px, 8vw, 48px) clamp(24px, 8vw, 56px)',
           boxShadow: '0 30px 70px rgba(59,70,81,0.14)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           gap: 18,
-          maxWidth: 420,
+          width: 'min(420px, 90vw)',
           textAlign: 'center',
+          boxSizing: 'border-box',
         }}
       >
         <div style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 34, fontWeight: 500, color: '#2C2620' }}>

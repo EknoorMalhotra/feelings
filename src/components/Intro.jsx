@@ -26,14 +26,24 @@ export default function Intro({ greeting, name, textColor, background, quote, on
         }}
       />
 
-      <div style={{ position: 'absolute', top: 64, left: 80, right: 64, maxWidth: 760, zIndex: 1 }}>
+      <div
+        style={{
+          position: 'absolute',
+          top: 'clamp(32px, 8vw, 64px)',
+          left: 'clamp(24px, 8vw, 80px)',
+          right: 'clamp(24px, 8vw, 64px)',
+          maxWidth: 760,
+          zIndex: 1,
+        }}
+      >
         <div
           style={{
             fontFamily: "'Bodoni Moda', serif",
             fontWeight: 400,
-            fontSize: 88,
+            fontSize: 'clamp(40px, 11vw, 88px)',
             lineHeight: 1.02,
             color: textColor,
+            overflowWrap: 'break-word',
           }}
         >
           {greeting},

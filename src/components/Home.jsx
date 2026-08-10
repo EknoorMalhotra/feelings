@@ -72,7 +72,7 @@ export default function Home({
           position: 'absolute',
           inset: 0,
           overflowY: 'auto',
-          padding: '48px 64px 140px',
+          padding: 'clamp(20px, 6vw, 48px) clamp(16px, 6vw, 64px) 140px',
           boxSizing: 'border-box',
           animation: 'fadeUp 0.5s ease',
           background,
@@ -95,7 +95,7 @@ export default function Home({
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 700, letterSpacing: 4, color: homeTextColorFaint }}>
               FEELINGS
             </div>
-            <div style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 36, fontWeight: 500, marginTop: 14, color: textColor }}>
+            <div style={{ fontFamily: "'Bodoni Moda', serif", fontSize: 'clamp(26px, 7vw, 36px)', fontWeight: 500, marginTop: 14, color: textColor }}>
               {greeting}, {name}
             </div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, color: homeTextColorMuted, marginTop: 6 }}>
@@ -113,7 +113,7 @@ export default function Home({
                 border: '1px solid rgba(59,70,81,0.1)',
                 borderRadius: 999,
                 padding: '13px 20px',
-                width: 280,
+                width: 'min(280px, 100%)',
                 boxSizing: 'border-box',
                 boxShadow: '0 2px 10px rgba(59,70,81,0.05)',
               }}
@@ -135,7 +135,7 @@ export default function Home({
                   position: 'absolute',
                   top: 56,
                   right: 0,
-                  width: 320,
+                  width: 'min(320px, 90vw)',
                   background: '#FBF5EA',
                   borderRadius: 16,
                   boxShadow: '0 16px 40px rgba(59,70,81,0.18)',
@@ -209,7 +209,7 @@ export default function Home({
                   style={{
                     background: '#FBF5EA',
                     borderRadius: 18,
-                    padding: '22px 30px',
+                    padding: 'clamp(16px, 5vw, 22px) clamp(18px, 6vw, 30px)',
                     boxShadow: '0 2px 16px rgba(59,70,81,0.06)',
                     animation: 'fadeUp 0.3s ease',
                     boxSizing: 'border-box',
@@ -236,7 +236,7 @@ export default function Home({
               background: '#FBF5EA',
               border: '1px solid rgba(59,70,81,0.08)',
               borderRadius: 22,
-              padding: '64px 40px',
+              padding: 'clamp(32px, 10vw, 64px) clamp(20px, 6vw, 40px)',
               textAlign: 'center',
               boxShadow: '0 2px 20px rgba(59,70,81,0.06)',
               boxSizing: 'border-box',
@@ -256,7 +256,7 @@ export default function Home({
             </div>
           </div>
         ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, maxWidth: 1360, margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, maxWidth: 1360, margin: '0 auto' }}>
           {monthBlocks.map((mb) => (
             <div
               key={mb.label}
