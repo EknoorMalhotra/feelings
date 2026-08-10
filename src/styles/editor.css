@@ -1,0 +1,9 @@
+.tiptap-editor .ProseMirror {
+  font-family: 'Courier Prime', monospace;
+  font-size: 17px;
+  line-height: 1.85;
+  color: #2C2620;
+  min-height: 400px;
+  outline: none;
+  white-space: pre-wrap;
+}
