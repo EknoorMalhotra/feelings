@@ -137,6 +137,20 @@ Verified live (temporary `#test-home` harness, same pattern as before): a synthe
 - **Google Cloud Console**: added `https://feelings-two.vercel.app` to the existing OAuth Client's Authorized JavaScript origins (account holder drove this too), alongside the pre-existing `http://localhost:5173` for local dev — kept, not replaced.
 - **Verified live in production, not just "it deployed"**: connected Google Drive for real on the live domain, hit the new empty state (confirmed IndexedDB is origin-scoped, so a fresh domain correctly starts with zero local entries even though the same Drive account has older ones — not a bug). Then specifically exercised **speaking mode** three times, since that's the code path that changed — real `MediaRecorder` recording → real network call to the deployed `api/transcribe.js` Vercel Function → real Groq transcription → auto-save. Confirmed past the UI via IndexedDB that all three landed with `syncStatus: 'synced'` and real Drive file IDs. Writing mode and the offline/PWA behavior were not re-tested on the production domain specifically, since neither's code changed in this phase and both were already verified thoroughly (Phase 4 and Phase 8/9 respectively).
 
+## Real bug found on the actual mobile device pass (2026-08-10)
+
+First real mobile Chrome test hit this immediately: the intro screen's heading ("Good afternoon, Eknoor") rendered off the right edge of the phone screen, letters visibly cut off. Root cause: `Intro.jsx` used a fixed `fontSize: 88` with fixed `left: 80 / right: 64` insets — sized for desktop, with no `overflow-wrap` safety net, so on a ~390px phone the words were simply wider than their container and rendered past it until the outer `overflow: hidden` hard-clipped them at the true screen edge.
+
+Auditing further (grepping every component for fixed `fontSize`/`padding`/`width`/`gridTemplateColumns` values) showed this wasn't a one-off — **no screen in the app had ever been tested at an actual mobile viewport width**, in any prior phase. The worst cases:
+
+- **`Home.jsx`**: the calendar rendered a hardcoded `repeat(3, 1fr)` grid — three squeezed, near-illegible month cards side by side on a phone instead of one usable calendar.
+- **`Entry.jsx`**: the writing-mode paper had `minWidth: 520` — a hard floor that *guarantees* horizontal overflow on every phone (no phone is 520px wide), regardless of any other sizing.
+- **`Entry.jsx`**'s header row (back button / Writing-Speaking toggle / Save) had fixed `48px` padding eating so much width that the three elements were right at the edge of fitting even on a 390px phone, no margin for anything narrower.
+
+Fixed all of it with fluid CSS (`clamp()` for font-size/spacing, `min()` for width floors/ceilings, `repeat(auto-fit, minmax(...))` for the calendar grid) rather than fixed breakpoints — no JS viewport-tracking needed, and desktop rendering is unchanged (verified: the calendar's `minmax(340px, 1fr)` still yields exactly 3 columns at the original ~1360px desktop width). `CheckinModal.jsx` turned out to already be safe (`width: 440, maxWidth: '90vw'`) — used as the reference pattern for tightening `ConnectGate.jsx` the same way.
+
+Verified all four affected screens for real at an actual ~390px mobile viewport width (Chrome resized to iPhone dimensions, driven through the same temporary `#test-*` hash-harness pattern used in every prior phase) before pushing — not just by reading the new CSS.
+
 ## What's next
 
 1. A mobile-device pass: connect Google Drive for real on mobile Chrome and mobile Safari, and install the PWA to a phone home screen (Phase 10's last open checklist item — needs a physical phone). Desktop Chrome connect, save/sync, and the airplane-mode-equivalent offline test were all covered live in the Phase 9 manual pass; the production voice pipeline was covered live in the Phase 10 deploy verification above.
