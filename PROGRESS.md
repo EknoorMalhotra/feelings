@@ -5,7 +5,7 @@ Source spec: `~/Downloads/journal-app-build-guide.md`. Design source of truth: `
 ## Decisions locked in during the build (beyond the original guide)
 
 - **Intro preview buttons** (Morning/Noon/Evening quick-switch in the prototype's top-left corner): **stripped** from the real build — confirmed as a design-time aid only.
-- **Hosting**: **Render** (static site + a small Express server for the transcribe proxy — see Phase 6 notes below on why this differs from the guide's Vercel-flavored assumption).
+- **Hosting**: **Vercel** (static site + a small Vercel Function for the transcribe proxy). Originally planned as Render during Phase 6 (since `api/server.js` was a persistent Express app, not a serverless function, and that's what ran without a rewrite) — switched to Vercel during Phase 10 once it became clear Render's free-tier Web Services cold-start on every period of inactivity (~30s, observed firsthand on another project on the same account), which Vercel's static hosting + serverless functions largely avoid. See Phase 10 notes for the resulting `api/transcribe.js` rewrite.
 - **Connect Google Drive flow**: gates the whole app *before* the intro screen. No persisted token (in-memory only, per the security design) means every page reload shows this gate again — that's intentional.
 - **Google OAuth Client ID**: reused the same Web-application-type Client ID originally created for an OAuth Playground test (`...ln784cnurqbjjh8ne18u4glceoertffb.apps.googleusercontent.com`). Playground used Authorization Code + secret; our app uses the same Client ID with the Identity Services **token client** flow instead (no secret, browser-only).
 - **Speaking-mode save flow**: transcript arrives → **auto-saves immediately** (matches the prototype's actual working behavior) → toast → back to Home. No "review before saving" intermediate step.
@@ -25,7 +25,7 @@ Source spec: `~/Downloads/journal-app-build-guide.md`. Design source of truth: `
 | 7 — Calendar logic | ✅ Done | Was already fully built during Phase 4 (`src/lib/calendar.js` + `Home.jsx`); verified end-to-end, no code changes needed (see below) |
 | 8 — Offline PWA | ✅ Done | `vite-plugin-pwa` manifest + service worker wired, app-shell offline load verified (see below) |
 | 9 — Polish | 🟡 Mostly done | Empty states + Drive-sync loading indicator added and verified live against a real Drive account, including a real airplane-mode test; also caught and fixed a real full-app layout bug (see below); mobile Chrome/Safari device pass still open |
-| 10 — Deploy | ⬜ Not started | Target: Render |
+| 10 — Deploy | 🟡 In progress | Switched to Vercel mid-phase (see notes below); code pushed to GitHub, `api/transcribe.js` rewritten as a Vercel Function; dashboard setup in progress |
 
 ## Two real bugs found and fixed during Phase 5
 
@@ -120,8 +120,22 @@ Worth noting for later: there's no performance tradeoff being made here. `extrac
 
 Verified live (temporary `#test-home` harness, same pattern as before): a synthetic entry with a matching word at character 265 of a 289-character body — well past the old 90-char cutoff — is now found by search, confirmed via Playwright before removing the harness.
 
+## Phase 10 build notes (Deploy — Render to Vercel switch)
+
+- **Why the switch**: the Render plan (locked in during Phase 6) was reconsidered once the account holder pointed out Render's free-tier Web Services cold-start ~30s after going idle, observed on another project on the same Render account. Vercel's free tier serves the static build straight from its CDN (no cold start at all for the frontend) and runs the transcribe endpoint as a serverless Function — cold starts there are typically sub-second to a couple seconds, not 30s.
+- **`api/server.js` (a persistent Express app calling `app.listen()`) doesn't run on Vercel as-is** — that shape doesn't fit the platform's serverless Function model. Restructured into three files instead of rewriting in place, so local dev and production share the actual transcription logic rather than risking drift:
+  - `server/transcribeGroq.js` — the Groq-calling logic itself (buffer + mimetype + API key → transcript text, or a thrown error with an HTTP `status`), used by both of the below.
+  - `server/dev-server.js` — the local-dev-only Express + multer server (what `api/server.js` used to be), used by `npm run dev:api`.
+  - `api/transcribe.js` — the actual deployed Vercel Function.
+- **`api/transcribe.js` uses the Web Standard `Request`/`Response`/`FormData` API, not Express or multer.** Checked current Vercel docs directly rather than assuming: Vercel's documented default handler shape for non-Next.js projects in `/api` is now the Web Standard style (`export function POST(request) { ... return new Response(...) }`), and Node's built-in `request.formData()` natively parses `multipart/form-data` uploads (it's the same WHATWG spec browsers implement) — so no multer/body-parser config is needed in the deployed function at all, sidestepping the whole `bodyParser: false` question that's specific to Next.js API routes and doesn't apply here. `maxDuration: 60` is set via the function's `config` export (Hobby plan's configurable ceiling — the default is only 10s, but 60s can be set explicitly).
+- **Checked whether a 10-minute voice entry (the longest realistic recording) could actually hit either of Vercel's Hobby-tier limits, rather than assuming it's fine:**
+  - *Execution time*: Groq's `whisper-large-v3-turbo` transcribes at ~216x real-time, so 10 minutes of audio takes roughly 3 seconds of actual inference — nowhere near the 60s ceiling even accounting for upload/network overhead.
+  - *Request payload size* (~4.5MB cap on Vercel's free tier): this was the real risk — `MediaRecorder` wasn't pinning a bitrate, so it used whatever default the browser picked (plausibly landing anywhere from ~2.4MB to ~4.8MB for a 10-minute recording depending on browser). Fixed by explicitly setting `audioBitsPerSecond: 32000` in `Entry.jsx`'s `MediaRecorder` constructor — plenty for clear speech, and it caps a 10-minute recording at a predictable ~2.4MB regardless of browser defaults.
+- **Verified without needing the Vercel CLI or a live deploy**: `server/dev-server.js` boots and its error path (`400` for a missing file) works locally; separately, `api/transcribe.js`'s `POST` export was invoked directly in plain Node with a constructed `Request`/`FormData` (Node has the same Web Standard APIs built in) — it correctly parsed the upload, converted it to a buffer, and made a *real* call to Groq with the real `GROQ_API_KEY` from `.env.server`. Sent deliberately-invalid audio bytes, so Groq rejected it (`400`) and the function correctly mapped that to a `502` — proving the whole pipeline (parse → buffer → Groq call → error mapping) is wired correctly end to end, independent of Vercel's actual runtime.
+- **Git/GitHub**: the project wasn't in git at all before this phase. Initialized git in `feelings/`, confirmed `.gitignore` already excluded `.env`/`.env.server` (real secrets) before the first commit — also noticed and fixed a pre-existing gitignore gap where `.env.server.example` (a template with no real secret) was being excluded too, alongside the real ones, by the same `.env.*` pattern. Pushed to a new **public** GitHub repo: [github.com/EknoorMalhotra/feelings](https://github.com/EknoorMalhotra/feelings).
+
 ## What's next
 
-1. Phase 10 per the original build guide's checklist (deploy to Render).
+1. Finish the Vercel dashboard setup (import the GitHub repo, set `VITE_GOOGLE_CLIENT_ID` + `GROQ_API_KEY` env vars, deploy) and add the resulting live domain to the Google Cloud Console OAuth Client's authorized JavaScript origins.
 2. A mobile-device pass still open: connect Google Drive for real on mobile Chrome and mobile Safari, and install the PWA to a phone home screen (Phase 10's checklist item). Desktop Chrome connect, save/sync, and the airplane-mode-equivalent offline test were all completed live in the Phase 9 manual pass above.
 3. Optional cleanup: two test entries ("Phase 9 manual QA", "Offline test") are sitting in the real `/journal/` Drive folder from that pass — delete them directly in Drive if desired, since the app itself has no delete-entry UI yet.

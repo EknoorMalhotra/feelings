@@ -77,7 +77,10 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
         : 'audio/webm'
-      const recorder = new MediaRecorder(stream, { mimeType })
+      // Pinned (not left to the browser default) so a long entry has a
+      // predictable upload size — comfortably speech-clear at 32kbps opus,
+      // and keeps a 10-minute recording well under Vercel's ~4.5MB request cap.
+      const recorder = new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 32000 })
       chunksRef.current = []
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data)
