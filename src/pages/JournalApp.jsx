@@ -17,12 +17,13 @@ const TOAST_DURATION_MS = 2600
 
 export default function JournalApp() {
   const auth = useGoogleAuth()
-  const { entries, addEntry } = useEntries()
+  const { entries, addEntry, updateEntry, deleteEntry } = useEntries()
 
   const [screen, setScreen] = useState('intro')
   const [selectedMood, setSelectedMood] = useState(null)
   const [showToast, setShowToast] = useState(false)
   const [toastMoodValue, setToastMoodValue] = useState(null)
+  const [editingEntry, setEditingEntry] = useState(null)
 
   const introTimerRef = useRef(null)
   const toastTimerRef = useRef(null)
@@ -54,6 +55,7 @@ export default function JournalApp() {
 
   function openCheckin() {
     setSelectedMood(null)
+    setEditingEntry(null)
     setScreen('checkin')
   }
 
@@ -65,11 +67,24 @@ export default function JournalApp() {
     setScreen('entry')
   }
 
+  function openEntry(entry) {
+    setEditingEntry(entry)
+    setScreen('entry')
+  }
+
   function goHome() {
+    setEditingEntry(null)
     setScreen('home')
   }
 
   async function handleSaveEntry({ title, body, input_method }) {
+    if (editingEntry) {
+      await updateEntry(editingEntry.id, { title, body })
+      setEditingEntry(null)
+      setScreen('home')
+      return
+    }
+
     const mood = selectedMood ?? 2
     await addEntry({ title, body, mood, tags: [], input_method })
     setScreen('home')
@@ -78,6 +93,12 @@ export default function JournalApp() {
     setShowToast(true)
     clearTimeout(toastTimerRef.current)
     toastTimerRef.current = setTimeout(() => setShowToast(false), TOAST_DURATION_MS)
+  }
+
+  async function handleDeleteEntry(entry) {
+    await deleteEntry(entry.id)
+    setEditingEntry(null)
+    setScreen('home')
   }
 
   return (
@@ -114,6 +135,7 @@ export default function JournalApp() {
           name={USER_NAME}
           todayLabel={todayLabel}
           onOpenCheckin={openCheckin}
+          onOpenEntry={openEntry}
           showToast={screen === 'home' && showToast}
           toastMoodCfg={moodConfig(toastMoodValue)}
         />
@@ -130,7 +152,14 @@ export default function JournalApp() {
       )}
 
       {screen === 'entry' && (
-        <Entry background={timeCfg.background} todayLabel={todayLabel} onGoHome={goHome} onSave={handleSaveEntry} />
+        <Entry
+          background={timeCfg.background}
+          todayLabel={todayLabel}
+          onGoHome={goHome}
+          onSave={handleSaveEntry}
+          entry={editingEntry}
+          onDelete={handleDeleteEntry}
+        />
       )}
     </div>
   )

@@ -11,9 +11,10 @@ const TOOLBAR_BUTTONS = [
 
 // Tiptap-backed replacement for the prototype's contenteditable +
 // document.execCommand formatting toolbar. Body is stored as Tiptap JSON.
-const WritingEditor = forwardRef(function WritingEditor({ onContentChange }, ref) {
+const WritingEditor = forwardRef(function WritingEditor({ onContentChange, initialContent }, ref) {
   const editor = useEditor({
     extensions: [StarterKit],
+    content: initialContent,
     onUpdate: ({ editor }) => onContentChange(!editor.isEmpty),
   })
 

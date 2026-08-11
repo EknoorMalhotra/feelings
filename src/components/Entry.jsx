@@ -12,14 +12,17 @@ const MIN_RECORDING_SECONDS = 1
 // Tiptap editor (WritingEditor). Speaking mode records via MediaRecorder,
 // drives the orb from a live AnalyserNode, and auto-saves the instant a
 // transcript comes back (no review-before-save step — see PROGRESS.md).
-export default function Entry({ background, todayLabel, onGoHome, onSave }) {
+export default function Entry({ background, todayLabel, onGoHome, onSave, entry, onDelete }) {
+  const isEditingExisting = !!entry
   const [entryMode, setEntryMode] = useState('writing')
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState(entry?.title ?? '')
   const [bodyHasContent, setBodyHasContent] = useState(false)
   const [recording, setRecording] = useState(false)
   const [recordedSeconds, setRecordedSeconds] = useState(0)
   const [transcribing, setTranscribing] = useState(false)
   const [error, setError] = useState(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const editorRef = useRef(null)
   const timerRef = useRef(null)
   const secondsRef = useRef(0)
@@ -183,68 +186,102 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
     onSave({ title: title.trim(), body, input_method: 'typed' })
   }
 
+  async function handleConfirmDelete() {
+    setDeleting(true)
+    setError(null)
+    try {
+      await onDelete(entry)
+    } catch (err) {
+      setError(err.message || 'Something went wrong deleting this entry.')
+      setDeleting(false)
+    }
+  }
+
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', background: entryBackground, animation: 'fadeUp 0.4s ease' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: 'clamp(16px, 5vw, 26px) clamp(16px, 5vw, 48px)', borderBottom: entryHeaderBorder, boxSizing: 'border-box', fontFamily: "'Inter', sans-serif" }}>
         <button type="button" onClick={handleGoHome} style={{ background: 'none', border: 'none', fontSize: 20, color: entryChromeColor, cursor: 'pointer' }}>
           ←
         </button>
-        <div style={{ display: 'flex', background: entryToggleBg, borderRadius: 999, padding: 4, gap: 4 }}>
+        {!isEditingExisting && (
+          <div style={{ display: 'flex', background: entryToggleBg, borderRadius: 999, padding: 4, gap: 4 }}>
+            <button
+              type="button"
+              onClick={() => setEntryMode('writing')}
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
+                borderRadius: 999,
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: isWriting ? '#FBF5EA' : 'transparent',
+                color: isWriting ? '#3B4651' : 'rgba(59,70,81,0.5)',
+              }}
+            >
+              Writing
+            </button>
+            <button
+              type="button"
+              onClick={() => setEntryMode('speaking')}
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
+                borderRadius: 999,
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: !isWriting ? '#FBF5EA' : 'transparent',
+                color: !isWriting ? '#3B4651' : 'rgba(59,70,81,0.5)',
+              }}
+            >
+              Speaking
+            </button>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 10 }}>
+          {isEditingExisting && (
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                background: 'transparent',
+                color: '#C77B6E',
+                border: '1px solid rgba(199,123,110,0.4)',
+                borderRadius: 999,
+                padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Delete
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setEntryMode('writing')}
+            onClick={handleSave}
+            disabled={!canSave}
             style={{
               fontFamily: "'Inter', sans-serif",
-              padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
+              background: '#FBF5EA',
+              color: '#3B4651',
+              border: '1px solid rgba(59,70,81,0.1)',
               borderRadius: 999,
-              border: 'none',
+              padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
               fontSize: 13,
-              fontWeight: 600,
+              fontWeight: 700,
               cursor: 'pointer',
-              background: isWriting ? '#FBF5EA' : 'transparent',
-              color: isWriting ? '#3B4651' : 'rgba(59,70,81,0.5)',
+              opacity: canSave ? 1 : 0.4,
+              pointerEvents: canSave ? 'auto' : 'none',
             }}
           >
-            Writing
-          </button>
-          <button
-            type="button"
-            onClick={() => setEntryMode('speaking')}
-            style={{
-              fontFamily: "'Inter', sans-serif",
-              padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
-              borderRadius: 999,
-              border: 'none',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              background: !isWriting ? '#FBF5EA' : 'transparent',
-              color: !isWriting ? '#3B4651' : 'rgba(59,70,81,0.5)',
-            }}
-          >
-            Speaking
+            {isEditingExisting ? 'Edit' : 'Save'}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!canSave}
-          style={{
-            fontFamily: "'Inter', sans-serif",
-            background: '#FBF5EA',
-            color: '#3B4651',
-            border: '1px solid rgba(59,70,81,0.1)',
-            borderRadius: 999,
-            padding: '9px 22px',
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: 'pointer',
-            opacity: canSave ? 1 : 0.4,
-            pointerEvents: canSave ? 'auto' : 'none',
-          }}
-        >
-          Save
-        </button>
       </div>
 
       {isWriting && (
@@ -287,7 +324,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
                 boxSizing: 'border-box',
               }}
             />
-            <WritingEditor ref={editorRef} onContentChange={setBodyHasContent} />
+            <WritingEditor ref={editorRef} onContentChange={setBodyHasContent} initialContent={entry?.body} />
           </div>
         </div>
       )}
@@ -348,6 +385,84 @@ export default function Entry({ background, todayLabel, onGoHome, onSave }) {
               {error}
             </div>
           )}
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(59,70,81,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 20,
+            animation: 'fadeUp 0.25s ease',
+          }}
+        >
+          <div
+            style={{
+              width: 'min(400px, 90vw)',
+              background: '#FBF5EA',
+              borderRadius: 26,
+              padding: 'clamp(28px, 8vw, 36px)',
+              boxShadow: '0 30px 70px rgba(0,0,0,0.28)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 18,
+              boxSizing: 'border-box',
+              textAlign: 'center',
+            }}
+          >
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 15, color: '#2C2620', lineHeight: 1.5 }}>
+              Are you sure you want to delete this journal entry from the logs?
+            </div>
+            {error && (
+              <div style={{ fontFamily: "'Inter', sans-serif", color: '#C77B6E', fontSize: 13 }}>{error}</div>
+            )}
+            <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  background: 'transparent',
+                  color: '#3B4651',
+                  border: '1px solid rgba(59,70,81,0.2)',
+                  borderRadius: 999,
+                  padding: '9px 22px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  opacity: deleting ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                style={{
+                  fontFamily: "'Inter', sans-serif",
+                  background: '#C77B6E',
+                  color: '#FBF5EA',
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '9px 22px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  opacity: deleting ? 0.6 : 1,
+                }}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

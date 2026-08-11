@@ -6,6 +6,7 @@ import {
   init,
   addEntry,
   updateEntry,
+  deleteEntry,
   getEntriesByDay,
   getEntriesForRange,
 } from '../lib/entriesStore'
@@ -22,6 +23,7 @@ export function useEntries() {
     entries,
     addEntry,
     updateEntry,
+    deleteEntry,
     getEntriesByDay,
     getEntriesForRange,
   }

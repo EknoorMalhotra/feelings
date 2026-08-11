@@ -3,7 +3,14 @@
 // authStore.js so both React (via useEntries) and plain JS can use it.
 import * as db from './db'
 import { getState as getAuthState, subscribe as subscribeAuth } from './authStore'
-import { ensureJournalFolder, writeEntryFile, updateEntryFile, listEntryFiles, readEntryFile } from './driveApi'
+import {
+  ensureJournalFolder,
+  writeEntryFile,
+  updateEntryFile,
+  listEntryFiles,
+  readEntryFile,
+  trashEntryFile,
+} from './driveApi'
 
 let entries = []
 let folderId = null
@@ -92,6 +99,28 @@ export async function updateEntry(id, patch) {
   upsertLocal(updated)
   maybeSync()
   return updated
+}
+
+// Trashes the Drive file first (if the entry ever synced), then removes it
+// locally — in that order, deliberately. pullFromDrive() treats "in Drive but
+// not local" as something to re-fetch, so a local-only delete would just get
+// resurrected on the next sync; requiring the Drive trash to succeed first
+// (which means being online) avoids that instead of adding a delete queue.
+export async function deleteEntry(id) {
+  const entry = entries.find((e) => e.id === id)
+  if (!entry) return
+
+  if (entry.driveFileId) {
+    const auth = getAuthState()
+    if (auth.status !== 'connected' || !navigator.onLine) {
+      throw new Error('Connect to the internet to delete this entry.')
+    }
+    await trashEntryFile(auth.accessToken, entry.driveFileId)
+  }
+
+  await db.deleteEntry(id)
+  entries = entries.filter((e) => e.id !== id)
+  notify()
 }
 
 export function getEntriesByDay(day) {

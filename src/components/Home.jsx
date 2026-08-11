@@ -17,6 +17,7 @@ export default function Home({
   name,
   todayLabel,
   onOpenCheckin,
+  onOpenEntry,
   showToast,
   toastMoodCfg,
 }) {
@@ -204,25 +205,33 @@ export default function Home({
             {activeDayEntries.map((entry) => {
               const cfg = moodConfig(entry.mood)
               return (
-                <div
+                <button
                   key={entry.id}
+                  type="button"
+                  onClick={() => onOpenEntry(entry)}
                   style={{
                     background: '#FBF5EA',
+                    border: 'none',
                     borderRadius: 18,
                     padding: 'clamp(16px, 5vw, 22px) clamp(18px, 6vw, 30px)',
                     boxShadow: '0 2px 16px rgba(59,70,81,0.06)',
                     animation: 'fadeUp 0.3s ease',
                     boxSizing: 'border-box',
+                    display: 'block',
+                    width: '100%',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ width: 14, height: 14, borderRadius: '50%', background: cfg?.color ?? 'rgba(59,70,81,0.2)', flex: 'none' }} />
-                    <div style={{ fontFamily: "'Bodoni Moda', serif", fontWeight: 500, fontSize: 19 }}>{entry.title || 'Untitled entry'}</div>
+                    <div style={{ fontFamily: "'Bodoni Moda', serif", fontWeight: 500, fontSize: 19, color: '#2C2620' }}>{entry.title || 'Untitled entry'}</div>
                   </div>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: 'rgba(59,70,81,0.6)', marginTop: 8, lineHeight: 1.5 }}>
                     {entrySnippet(entry)}
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>

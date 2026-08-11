@@ -132,4 +132,14 @@ export async function readEntryFile(accessToken, fileId) {
   return res.json()
 }
 
+// Moves an entry file to Drive's own trash (recoverable there for ~30 days)
+// rather than a hard delete, since this removes a personal journal entry.
+export async function trashEntryFile(accessToken, fileId) {
+  await driveFetch(accessToken, `${DRIVE_FILES_URL}/${fileId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ trashed: true }),
+  })
+}
+
 export { DriveApiError }
