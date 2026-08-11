@@ -81,7 +81,7 @@ Done together with the account holder driving the actual Google OAuth consent sc
 - **State management**: no Redux/Zustand. Two singleton stores using a plain subscribe/notify pattern (`src/lib/authStore.js`, `src/lib/entriesStore.js`), each exposed to React via a thin `useSyncExternalStore` hook (`useGoogleAuth`, `useEntries`). This lets non-React code (Drive API calls, sync logic) read/write the same state as components, without needing Context.
 - **Screen flow**: no react-router — matches the prototype's own architecture, which is a single top-level state machine (`screen: 'intro'|'home'|'checkin'|'entry'`) living in `src/pages/JournalApp.jsx`. `react-router-dom` is installed per the original stack list but unused so far; only worth wiring in if a settings/export page gets added later (see "known open items" in the original guide).
 - **Entry data model**: each entry is `{ id, created_at, updated_at, title, body (Tiptap JSON), mood, tags, input_method, day }` — `day` (`YYYY-MM-DD`) is a local-only IndexedDB field for calendar/day-grouping queries, stripped before writing to Drive (`src/lib/entriesStore.js` → `toDriveJson`).
-- **Local-first sync**: writes go to IndexedDB immediately (works fully offline), then a background `maybeSync()` pushes any `pending` entries to Drive whenever connected + `navigator.onLine`. Retries happen passively on next trigger (auth reconnect, `online` event, new entry) — no exponential backoff yet.
+- **Local-first sync, both directions**: writes go to IndexedDB immediately (works fully offline), then a background `maybeSync()` pushes any `pending` entries to Drive whenever connected + `navigator.onLine`. The reverse direction, `pullFromDrive()`, was added in Phase 10 (see notes below) — without it, every fresh browser/device started completely empty regardless of what was already in Drive, since nothing ever read anything back. Both run together (`syncAll()`) on init and on every auth-connect/online event. Retries happen passively on next trigger — no exponential backoff yet.
 - **Multi-entry-per-day**: `src/lib/calendar.js` groups entries by day and sorts each day's list newest-first; the calendar dot uses the most recent entry's mood. Clicking a day shows *all* that day's entries stacked (not just one card) in `Home.jsx`.
 
 ## Local dev setup
@@ -150,6 +150,18 @@ Auditing further (grepping every component for fixed `fontSize`/`padding`/`width
 Fixed all of it with fluid CSS (`clamp()` for font-size/spacing, `min()` for width floors/ceilings, `repeat(auto-fit, minmax(...))` for the calendar grid) rather than fixed breakpoints — no JS viewport-tracking needed, and desktop rendering is unchanged (verified: the calendar's `minmax(340px, 1fr)` still yields exactly 3 columns at the original ~1360px desktop width). `CheckinModal.jsx` turned out to already be safe (`width: 440, maxWidth: '90vw'`) — used as the reference pattern for tightening `ConnectGate.jsx` the same way.
 
 Verified all four affected screens for real at an actual ~390px mobile viewport width (Chrome resized to iPhone dimensions, driven through the same temporary `#test-*` hash-harness pattern used in every prior phase) before pushing — not just by reading the new CSS.
+
+## Second real gap found on the mobile pass: Drive was write-only (2026-08-11)
+
+Continuing the mobile pass surfaced a second, more architectural gap: connecting on mobile Safari, then mobile Chrome, both showed "Nothing here yet" despite entries genuinely existing in the account's Drive `/journal/` folder (written earlier from desktop Chrome). Root cause: `entriesStore.js` only ever *pushed* local entries to Drive (`maybeSync`) — nothing anywhere ever *read* entries back down. Each browser/device's IndexedDB is its own isolated silo, so a fresh browser had no way to know what was already in Drive, regardless of being signed into the same Google account. This had been true since Phase 3, just never surfaced until testing across genuinely different browsers/devices instead of one continuously-running session.
+
+Fixed by adding `pullFromDrive()` to `entriesStore.js`, using `listEntryFiles`/`readEntryFile` from `driveApi.js` — both already existed and were already verified against real Drive back in Phase 2, just never called from anywhere. Design:
+- Matched by `id`, using the Drive filename (`${entry.id}.json`) as the join key — reliable since every write already names files this way, and no extra metadata round-trip is needed to know which remote files are already local.
+- Only fetches files whose id isn't already in the local set — cheap for the common case (nothing new), and avoids needing any conflict-resolution logic, since this app has no entry-editing feature yet, so there's nothing to merge.
+- Pulled entries get reconstructed with the local-only fields Drive doesn't store (`day`, `driveFileId`, `syncStatus: 'synced'`), same shape as a pushed-then-synced entry.
+- Runs alongside `maybeSync` (bundled into a new `syncAll()`) on init and on every auth-connect/`online` event — so it also picks up entries written from *other* devices during a long-running session, not just on first connect.
+
+Not independently re-verified with a fresh mock/harness beyond the build succeeding — `listEntryFiles`/`readEntryFile` themselves were already proven in Phase 2, so the new surface area is just the reconciliation loop. Real verification is the account holder reconnecting on their phone (already mid-flight when this was written), which is a genuinely fresh-browser scenario.
 
 ## What's next
 

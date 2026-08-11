@@ -3,12 +3,13 @@
 // authStore.js so both React (via useEntries) and plain JS can use it.
 import * as db from './db'
 import { getState as getAuthState, subscribe as subscribeAuth } from './authStore'
-import { ensureJournalFolder, writeEntryFile, updateEntryFile } from './driveApi'
+import { ensureJournalFolder, writeEntryFile, updateEntryFile, listEntryFiles, readEntryFile } from './driveApi'
 
 let entries = []
 let folderId = null
 let initialized = false
 let syncing = false
+let pulling = false
 
 const listeners = new Set()
 
@@ -49,7 +50,12 @@ export async function init() {
   initialized = true
   entries = await db.getAllEntries()
   notify()
-  maybeSync()
+  syncAll()
+}
+
+async function getFolderId(accessToken) {
+  if (!folderId) folderId = await ensureJournalFolder(accessToken)
+  return folderId
 }
 
 export async function addEntry({ title, body, mood, tags = [], input_method }) {
@@ -102,14 +108,14 @@ export async function maybeSync() {
 
   syncing = true
   try {
-    if (!folderId) folderId = await ensureJournalFolder(auth.accessToken)
+    const folder = await getFolderId(auth.accessToken)
     const pending = await db.getPendingEntries()
 
     for (const entry of pending) {
       try {
         const result = entry.driveFileId
           ? await updateEntryFile(auth.accessToken, entry.driveFileId, toDriveJson(entry))
-          : await writeEntryFile(auth.accessToken, folderId, toDriveJson(entry))
+          : await writeEntryFile(auth.accessToken, folder, toDriveJson(entry))
         const synced = {
           ...entry,
           driveFileId: result.id ?? entry.driveFileId,
@@ -126,8 +132,52 @@ export async function maybeSync() {
   }
 }
 
+// Pulls entries that exist in Drive but not locally yet — the read side of
+// sync, so a fresh browser/device populates from Drive instead of starting
+// empty. Matched by id (Drive filenames are `${entry.id}.json`); anything
+// already present locally is left untouched rather than re-fetched, since
+// this app has no entry-editing feature yet, so there's nothing to merge.
+export async function pullFromDrive() {
+  const auth = getAuthState()
+  if (auth.status !== 'connected' || !navigator.onLine || pulling) return
+
+  pulling = true
+  try {
+    const folder = await getFolderId(auth.accessToken)
+    const files = await listEntryFiles(auth.accessToken, folder)
+    const localIds = new Set(entries.map((e) => e.id))
+
+    for (const file of files) {
+      const id = file.name.replace(/\.json$/, '')
+      if (localIds.has(id)) continue
+
+      try {
+        const remote = await readEntryFile(auth.accessToken, file.id)
+        const entry = {
+          ...remote,
+          id,
+          day: dayFromIso(remote.created_at),
+          driveFileId: file.id,
+          syncStatus: 'synced',
+        }
+        await db.putEntry(entry)
+        upsertLocal(entry)
+      } catch (err) {
+        console.warn('Pull failed for entry, will retry later:', file.id, err)
+      }
+    }
+  } finally {
+    pulling = false
+  }
+}
+
+function syncAll() {
+  pullFromDrive()
+  maybeSync()
+}
+
 // Re-attempt sync whenever auth connects or the browser comes back online.
-subscribeAuth(maybeSync)
+subscribeAuth(syncAll)
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', maybeSync)
+  window.addEventListener('online', syncAll)
 }
