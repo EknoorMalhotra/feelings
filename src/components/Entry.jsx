@@ -294,7 +294,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
       </div>
 
       {isWriting && (
-        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(16px, 6vw, 48px) clamp(16px, 6vw, 64px)', boxSizing: 'border-box', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(16px, 6vw, 48px) clamp(16px, 6vw, 64px)', boxSizing: 'border-box', display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
           <div
             onClick={enterEditMode}
             style={{
