@@ -106,7 +106,7 @@ export default function JournalApp() {
       style={{
         position: 'relative',
         width: '100vw',
-        height: '100vh',
+        height: '100dvh',
         minHeight: 700,
         overflow: 'hidden',
         background: '#F3E8D6',
