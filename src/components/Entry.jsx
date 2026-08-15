@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatSeconds } from '../lib/dateUtils'
-import { textToDoc } from '../lib/tiptapText'
+import { textToDoc, deriveTitle } from '../lib/tiptapText'
 import WritingEditor from './WritingEditor'
 
 const PAPER_NOISE =
@@ -168,7 +168,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Transcription failed')
       const text = (data.text || '').trim()
-      onSave({ title: '', body: textToDoc(text), input_method: 'voice' })
+      onSave({ title: deriveTitle(text), body: textToDoc(text), input_method: 'voice' })
     } catch (err) {
       setError(err.message || 'Something went wrong transcribing your recording.')
       setTranscribing(false)
