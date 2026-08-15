@@ -186,6 +186,14 @@ Fixed by switching to `height: '100dvh'` (dynamic viewport height) — a modern 
 
 Not independently reproducible locally — desktop Chrome (including resized/simulated mobile widths) has no collapsing toolbar to trigger the bug with, so `100vh` and `100dvh` render identically there. Verified only that the change doesn't regress desktop rendering; the actual fix confirmation has to come from the account holder's real phone.
 
+## Fourth bug: drafting paper didn't grow with content (2026-08-15)
+
+Reported from real usage (both phone and desktop) writing a longer entry than earlier test data had exercised: past a certain length, the text just overflowed past the paper card's visible bottom edge onto the page background instead of the card growing to contain it.
+
+Root cause: the writing-mode scroll container (`Entry.jsx`) was `display: 'flex'` with no `flexDirection` set — defaulting to `row` — and no `alignItems`, so the default cross-axis behavior (`stretch`) forced the paper to exactly match the container's height rather than sizing to its own content. `overflowY: 'auto'` was already correctly set on that container, but it never triggered a scrollbar because the paper never actually grew taller than it at the flex-layout level — the overflow only showed up visually, past the paper's own unstretched background.
+
+Fixed with `alignItems: 'flex-start'` on the container, which switches the paper back to natural content-based sizing (still floored by its existing `minHeight: 600`). Verified with a temporary 12-paragraph test entry: the card now grows to fully contain long content with a clean bottom edge, and the container scrolls normally once content exceeds the viewport. The fix is a pure flexbox cross-axis behavior change, not viewport-size-dependent, so it applies identically on both the desktop and mobile cases reported.
+
 ## What's next
 
 1. Confirm the `100dvh` fix actually resolves the missing-button issue on the account holder's real phone (the one mobile-specific fix in this session not independently verifiable without one).
