@@ -194,6 +194,14 @@ Root cause: the writing-mode scroll container (`Entry.jsx`) was `display: 'flex'
 
 Fixed with `alignItems: 'flex-start'` on the container, which switches the paper back to natural content-based sizing (still floored by its existing `minHeight: 600`). Verified with a temporary 12-paragraph test entry: the card now grows to fully contain long content with a clean bottom edge, and the container scrolls normally once content exceeds the viewport. The fix is a pure flexbox cross-axis behavior change, not viewport-size-dependent, so it applies identically on both the desktop and mobile cases reported.
 
+## Post-launch feature: auto-title for voice entries (2026-08-15)
+
+Voice entries always saved with an empty title (`onSave({ title: '', ... })` in `Entry.jsx`), showing as "Untitled entry" everywhere on Home. Discussed two independent decisions here — mood (already manual, picked at checkin before recording starts, same for voice and text) and title (the actual gap) — and kept mood as-is; only title changed.
+
+Added `deriveTitle(text, maxLength = 60)` in `tiptapText.js`: prefers the transcript's first sentence (checks for `.`/`!`/`?` within the length budget); falls back to a word-boundary truncation with an ellipsis when there's no early punctuation to split on. That fallback matters in practice — real transcripts tested earlier this session (e.g. "trying the audio version again I'm not sure if it get the transcription correct so I'm try") came back from Whisper with no punctuation at all. Verified the function against both patterns plus edge cases (empty string, no spaces at all) before wiring it in.
+
+Verified live with a real recording end-to-end (not just the unit-level string cases): the saved entry got title "Alright, we are recording this and this is just a test…", correctly truncated at a word boundary. Confirmed no retroactive rewrite — voice entries saved before this change correctly still show as untitled rather than being backfilled.
+
 ## What's next
 
 1. Confirm the `100dvh` fix actually resolves the missing-button issue on the account holder's real phone (the one mobile-specific fix in this session not independently verifiable without one).
