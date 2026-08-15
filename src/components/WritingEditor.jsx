@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle } from 'react'
+import { forwardRef, useEffect, useImperativeHandle } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import '../styles/editor.css'
@@ -11,12 +11,17 @@ const TOOLBAR_BUTTONS = [
 
 // Tiptap-backed replacement for the prototype's contenteditable +
 // document.execCommand formatting toolbar. Body is stored as Tiptap JSON.
-const WritingEditor = forwardRef(function WritingEditor({ onContentChange, initialContent }, ref) {
+const WritingEditor = forwardRef(function WritingEditor({ onContentChange, initialContent, editable = true }, ref) {
   const editor = useEditor({
     extensions: [StarterKit],
     content: initialContent,
+    editable,
     onUpdate: ({ editor }) => onContentChange(!editor.isEmpty),
   })
+
+  useEffect(() => {
+    editor?.setEditable(editable)
+  }, [editor, editable])
 
   useImperativeHandle(ref, () => ({
     getJSON: () => editor?.getJSON(),
@@ -27,6 +32,7 @@ const WritingEditor = forwardRef(function WritingEditor({ onContentChange, initi
 
   return (
     <>
+      {editable && (
       <div style={{ display: 'flex', gap: 8, marginBottom: 26, paddingBottom: 22, borderBottom: '1px solid rgba(59,70,81,0.1)' }}>
         {TOOLBAR_BUTTONS.map(({ label, command, mark, style }) => (
           <button
@@ -52,6 +58,7 @@ const WritingEditor = forwardRef(function WritingEditor({ onContentChange, initi
           </button>
         ))}
       </div>
+      )}
       <div className="tiptap-editor" style={{ position: 'relative', flex: 1 }}>
         {editor.isEmpty && (
           <div

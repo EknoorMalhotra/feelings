@@ -14,6 +14,10 @@ const MIN_RECORDING_SECONDS = 1
 // transcript comes back (no review-before-save step — see PROGRESS.md).
 export default function Entry({ background, todayLabel, onGoHome, onSave, entry, onDelete }) {
   const isEditingExisting = !!entry
+  // Existing entries open read-only until the user asks to edit (via the
+  // header CTA or by clicking into the draft itself); a brand-new entry is
+  // editable immediately since there's nothing to "view" first.
+  const [isEditingMode, setIsEditingMode] = useState(!isEditingExisting)
   const [entryMode, setEntryMode] = useState('writing')
   const [title, setTitle] = useState(entry?.title ?? '')
   const [bodyHasContent, setBodyHasContent] = useState(false)
@@ -46,6 +50,11 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
   // Speaking mode saves itself the moment a transcript arrives; the header
   // Save button only ever applies to writing mode.
   const canSave = isWriting && ((title && title.trim().length > 0) || bodyHasContent)
+  const showingEditButton = isEditingExisting && !isEditingMode
+
+  function enterEditMode() {
+    if (showingEditButton) setIsEditingMode(true)
+  }
 
   function stopTracksAndAudio() {
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -248,9 +257,9 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
               onClick={() => setShowDeleteConfirm(true)}
               style={{
                 fontFamily: "'Inter', sans-serif",
-                background: 'transparent',
+                background: '#FBF5EA',
                 color: '#C77B6E',
-                border: '1px solid rgba(199,123,110,0.4)',
+                border: '1px solid rgba(199,123,110,0.35)',
                 borderRadius: 999,
                 padding: 'clamp(7px, 2vw, 9px) clamp(12px, 3.5vw, 22px)',
                 fontSize: 13,
@@ -263,8 +272,8 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
           )}
           <button
             type="button"
-            onClick={handleSave}
-            disabled={!canSave}
+            onClick={showingEditButton ? enterEditMode : handleSave}
+            disabled={!showingEditButton && !canSave}
             style={{
               fontFamily: "'Inter', sans-serif",
               background: '#FBF5EA',
@@ -275,11 +284,11 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
-              opacity: canSave ? 1 : 0.4,
-              pointerEvents: canSave ? 'auto' : 'none',
+              opacity: showingEditButton || canSave ? 1 : 0.4,
+              pointerEvents: showingEditButton || canSave ? 'auto' : 'none',
             }}
           >
-            {isEditingExisting ? 'Edit' : 'Save'}
+            {showingEditButton ? 'Edit' : 'Save'}
           </button>
         </div>
       </div>
@@ -287,6 +296,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
       {isWriting && (
         <div style={{ flex: 1, overflowY: 'auto', padding: 'clamp(16px, 6vw, 48px) clamp(16px, 6vw, 64px)', boxSizing: 'border-box', display: 'flex', justifyContent: 'center' }}>
           <div
+            onClick={enterEditMode}
             style={{
               width: '70%',
               minWidth: 'min(520px, 100%)',
@@ -302,6 +312,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
               display: 'flex',
               flexDirection: 'column',
               boxSizing: 'border-box',
+              cursor: showingEditButton ? 'text' : 'default',
             }}
           >
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, letterSpacing: 2, color: 'rgba(59,70,81,0.4)', marginBottom: 18 }}>
@@ -310,6 +321,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              readOnly={showingEditButton}
               placeholder="Title"
               style={{
                 border: 'none',
@@ -324,7 +336,12 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
                 boxSizing: 'border-box',
               }}
             />
-            <WritingEditor ref={editorRef} onContentChange={setBodyHasContent} initialContent={entry?.body} />
+            <WritingEditor
+              ref={editorRef}
+              onContentChange={setBodyHasContent}
+              initialContent={entry?.body}
+              editable={isEditingMode}
+            />
           </div>
         </div>
       )}
