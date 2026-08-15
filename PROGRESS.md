@@ -172,8 +172,19 @@ Resolves one item from the original guide's "Known open items" list. Tapping a d
 - Confirm dialog uses the exact requested copy ("Are you sure you want to delete this journal entry from the logs?"), styled consistently with the existing `CheckinModal` overlay pattern.
 - **Verified live against the real Drive account** (not just build success): opened a real test entry, edited its body, confirmed the update synced with the same `driveFileId` (PATCH in place, not a new file). Then deleted a different real test entry, confirmed it disappeared locally, and — the part that actually mattered — called `pullFromDrive()` again immediately afterward and confirmed the deleted entry did **not** come back, proving the Drive-side trash genuinely completed before the local removal ran, not just that the UI looked right.
 
+## Third mobile bug: bottom-pinned buttons hidden under Safari's toolbar (2026-08-15)
+
+The account holder's actual phone testing (via the live production URL, not a simulator) caught what the earlier ~390px-desktop-Chrome-resized responsive pass couldn't: the intro screen's skip arrow and Home's "+"/syncing-pill were all missing entirely on mobile Safari — not overflowing or clipped, just not visibly present anywhere on screen.
+
+Root cause: `JournalApp.jsx`'s root container used `height: '100vh'`. On mobile Safari, `100vh` is sized as if the browser's own address-bar/toolbar chrome were collapsed — but the toolbar is visible in the normal case (confirmed in the account holder's screenshots), so anything pinned via `bottom: 56` relative to that taller-than-actually-visible container renders below the real visible viewport, hidden underneath the toolbar. This is a well-known, long-standing mobile Safari quirk, not specific to this app's code otherwise.
+
+Fixed by switching to `height: '100dvh'` (dynamic viewport height) — a modern CSS unit that tracks the actual visible viewport as the toolbar shows/hides, well-supported on any browser this app already depends on (Service Workers, MediaRecorder). One-line fix, `src/pages/JournalApp.jsx` only; `index.css`'s `#root { min-height: 100svh }` was already using a safe/conservative unit and didn't need to change.
+
+Not independently reproducible locally — desktop Chrome (including resized/simulated mobile widths) has no collapsing toolbar to trigger the bug with, so `100vh` and `100dvh` render identically there. Verified only that the change doesn't regress desktop rendering; the actual fix confirmation has to come from the account holder's real phone.
+
 ## What's next
 
-1. A mobile-device pass: connect Google Drive for real on mobile Chrome and mobile Safari, and install the PWA to a phone home screen (Phase 10's last open checklist item — needs a physical phone). Desktop Chrome connect, save/sync, and the airplane-mode-equivalent offline test were all covered live in the Phase 9 manual pass; the production voice pipeline was covered live in the Phase 10 deploy verification above.
+1. Confirm the `100dvh` fix actually resolves the missing-button issue on the account holder's real phone (the one mobile-specific fix in this session not independently verifiable without one).
+2. A mobile-device pass: connect Google Drive for real on mobile Chrome and mobile Safari, and install the PWA to a phone home screen (Phase 10's last open checklist item — needs a physical phone). Desktop Chrome connect, save/sync, and the airplane-mode-equivalent offline test were all covered live in the Phase 9 manual pass; the production voice pipeline was covered live in the Phase 10 deploy verification above.
 2. Optional cleanup: remaining test entries are sitting in the real `/journal/` Drive folder from manual testing across Phase 9 and 10 — delete them directly in the app now (or in Drive) if desired, now that delete actually exists.
 3. With every phase now done or verification-only-remaining, the app is feature-complete per the original build guide, and edit/delete (one of the guide's "Known open items") is now resolved. Settings/export screen and dark mode remain open if there's appetite for more.
