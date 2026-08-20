@@ -14,6 +14,10 @@ export function todayKey() {
   return dayKey(new Date())
 }
 
+export function formatDateLabel(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+}
+
 export function formatSeconds(total) {
   const m = Math.floor(total / 60)
   const s = total % 60

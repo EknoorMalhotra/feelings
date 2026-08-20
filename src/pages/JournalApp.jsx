@@ -3,6 +3,7 @@ import '../styles/animations.css'
 import { useGoogleAuth } from '../hooks/useGoogleAuth'
 import { useEntries } from '../hooks/useEntries'
 import { getTimeKeyForHour, getTimeConfig } from '../lib/timeConfig'
+import { formatDateLabel } from '../lib/dateUtils'
 import { getRandomQuote } from '../lib/quotes'
 import { moodConfig } from '../lib/moods'
 import ConnectGate from '../components/ConnectGate'
@@ -32,7 +33,7 @@ export default function JournalApp() {
   const timeKey = getTimeKeyForHour(now.getHours())
   const timeCfg = getTimeConfig(timeKey)
   const [quote] = useState(() => getRandomQuote(timeKey))
-  const todayLabel = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const todayLabel = formatDateLabel(now)
 
   useEffect(() => {
     if (auth.status !== 'connected') return undefined

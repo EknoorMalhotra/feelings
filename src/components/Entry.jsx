@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { formatSeconds } from '../lib/dateUtils'
+import { formatSeconds, formatDateLabel } from '../lib/dateUtils'
 import { textToDoc, deriveTitle } from '../lib/tiptapText'
 import WritingEditor from './WritingEditor'
 
@@ -14,6 +14,7 @@ const MIN_RECORDING_SECONDS = 1
 // transcript comes back (no review-before-save step — see PROGRESS.md).
 export default function Entry({ background, todayLabel, onGoHome, onSave, entry, onDelete }) {
   const isEditingExisting = !!entry
+  const dateLabel = entry ? formatDateLabel(new Date(entry.created_at)) : todayLabel
   // Existing entries open read-only until the user asks to edit (via the
   // header CTA or by clicking into the draft itself); a brand-new entry is
   // editable immediately since there's nothing to "view" first.
@@ -316,7 +317,7 @@ export default function Entry({ background, todayLabel, onGoHome, onSave, entry,
             }}
           >
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, letterSpacing: 2, color: 'rgba(59,70,81,0.4)', marginBottom: 18 }}>
-              {todayLabel}
+              {dateLabel}
             </div>
             <input
               value={title}
